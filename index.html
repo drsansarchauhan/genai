@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSAI601 – Generative AI with Claude</title>
+<style>
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --light: #f8f9fa;
+    --mid: #e9ecef;
+    --text: #212529;
+    --muted: #6c757d;
+    --success: #198754;
+    --warn: #fd7e14;
+    --border: #dee2e6;
+    --card-bg: #ffffff;
+    --sidebar-w: 260px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--light); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w); min-height: 100vh; background: var(--primary);
+    color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; overflow-y: auto;
+  }
+  #sidebar .brand { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  #sidebar .brand .code { font-size: 11px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; font-weight: 700; }
+  #sidebar .brand h1 { font-size: 15px; line-height: 1.4; margin-top: 4px; font-weight: 600; }
+  #sidebar nav { flex: 1; padding: 12px 0; }
+  #sidebar nav .section-label { font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,.4); text-transform: uppercase; padding: 16px 20px 6px; font-weight: 700; }
+  #sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13.5px; color: rgba(255,255,255,.75); text-decoration: none; transition: all .15s; border-left: 3px solid transparent; }
+  #sidebar nav a:hover { color: #fff; background: rgba(255,255,255,.06); }
+  #sidebar nav a.active { color: #fff; background: rgba(233,69,96,.15); border-left-color: var(--accent); }
+  #sidebar nav a .icon { font-size: 16px; width: 20px; text-align: center; }
+  #sidebar .footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.1); font-size: 11px; color: rgba(255,255,255,.35); }
+
+  /* ── Main ── */
+  #main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+  #topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 14px 36px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  #topbar .page-title { font-size: 15px; font-weight: 600; color: var(--primary); }
+  #topbar .badges { display: flex; gap: 8px; }
+  .badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-green { background: #dcfce7; color: #166534; }
+
+  #content { padding: 36px; max-width: 1000px; }
+
+  /* ── Page sections ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Cards ── */
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 17px; font-weight: 700; margin-bottom: 14px; color: var(--primary); }
+  .card h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--accent2); }
+  .card p { font-size: 14px; line-height: 1.7; color: #444; margin-bottom: 10px; }
+
+  /* ── Hero (home) ── */
+  .hero { background: linear-gradient(135deg, var(--primary) 0%, var(--accent2) 100%); color: #fff; border-radius: 12px; padding: 40px; margin-bottom: 24px; }
+  .hero .tag { background: rgba(233,69,96,.3); color: #fca5a5; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 14px; }
+  .hero h1 { font-size: 28px; font-weight: 800; line-height: 1.3; margin-bottom: 10px; }
+  .hero p { font-size: 14px; opacity: .85; line-height: 1.7; max-width: 600px; }
+  .hero .meta { margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .hero .meta-item { font-size: 13px; opacity: .9; }
+  .hero .meta-item span { font-weight: 700; }
+
+  /* ── Stat grid ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 20px; text-align: center; }
+  .stat-card .num { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th { background: var(--primary); color: #fff; padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .5px; }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f9fafb; }
+  .co-high { background: #166534; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+  .co-med  { background: #92400e; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+  .co-low  { background: #1e3a5f; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+
+  /* ── Unit tabs ── */
+  .unit-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .unit-tab { padding: 7px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--muted); transition: all .15s; }
+  .unit-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .unit-panel { display: none; }
+  .unit-panel.active { display: block; }
+
+  /* ── Lecture list ── */
+  .lecture-list { list-style: none; }
+  .lecture-list li { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--mid); }
+  .lecture-list li:last-child { border-bottom: none; }
+  .lec-num { background: var(--accent2); color: #fff; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; min-width: 34px; text-align: center; flex-shrink: 0; margin-top: 2px; }
+  .lec-body { flex: 1; }
+  .lec-title { font-weight: 600; font-size: 14px; color: var(--primary); }
+  .lec-desc { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+  .lec-tags { margin-top: 5px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .tag-sm { font-size: 10.5px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+  .tag-lecture { background: #dbeafe; color: #1e40af; }
+  .tag-lab { background: #dcfce7; color: #166534; }
+  .tag-discussion { background: #fef3c7; color: #92400e; }
+
+  /* ── Assignment cards ── */
+  .assign-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .assign-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .assign-header h3 { font-size: 14px; font-weight: 700; color: var(--primary); }
+  .assign-body { padding: 16px 20px; }
+  .assign-body p { font-size: 13.5px; color: #444; line-height: 1.65; margin-bottom: 8px; }
+  .q-list { list-style: decimal; padding-left: 20px; font-size: 13.5px; color: #333; line-height: 1.7; }
+  .q-list li { margin-bottom: 8px; }
+  .marks { font-size: 11px; font-weight: 700; color: var(--muted); margin-left: 6px; }
+
+  /* ── Quiz card ── */
+  .quiz-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .quiz-header { background: var(--accent2); color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+  .quiz-header h3 { font-size: 13.5px; font-weight: 700; }
+  .quiz-body { padding: 16px 20px; }
+  .mcq { margin-bottom: 14px; }
+  .mcq .q { font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+  .mcq .options { font-size: 13px; color: #444; padding-left: 16px; }
+  .mcq .options li { margin-bottom: 3px; }
+  .mcq .options li.correct { color: var(--success); font-weight: 600; }
+
+  /* ── Resources ── */
+  .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .res-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .res-card h3 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .res-card a { display: block; font-size: 13px; color: #1d4ed8; text-decoration: none; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+  .res-card a:hover { text-decoration: underline; }
+  .res-card a:last-child { border-bottom: none; }
+
+  /* ── CO/PO section headings ── */
+  .section-h { font-size: 18px; font-weight: 800; color: var(--primary); margin-bottom: 6px; }
+  .section-sub { font-size: 13.5px; color: var(--muted); margin-bottom: 20px; }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  /* ── CO pill ── */
+  .co-pill { display: inline-block; background: var(--accent); color: #fff; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 700; margin-right: 6px; margin-bottom: 6px; }
+  .po-pill { display: inline-block; background: var(--accent2); color: #fff; border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 700; margin-right: 6px; margin-bottom: 6px; }
+
+  /* evaluation table */
+  .eval-row td:first-child { font-weight: 600; }
+
+  /* ── Unit materials banner ── */
+  .materials-banner {
+    background: linear-gradient(135deg, #0f1f3d 0%, #1a3a6b 100%);
+    border-radius: 12px; padding: 24px 28px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  .materials-banner .mb-left h3 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .materials-banner .mb-left p  { font-size: 13px; color: rgba(255,255,255,.65); }
+  .materials-banner .mb-btns   { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-material {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: all .15s; cursor: pointer; border: none;
+  }
+  .btn-notes  { background: #e94560; color: #fff; }
+  .btn-notes:hover  { background: #c73652; }
+  .btn-slides { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); }
+  .btn-slides:hover { background: rgba(255,255,255,.22); }
+  .btn-material .icon { font-size: 16px; }
+
+  /* ── Sidebar sub-links ── */
+  #sidebar nav a.sub-link { padding-left: 36px; font-size: 12.5px; color: rgba(255,255,255,.55); border-left: 3px solid transparent; }
+  #sidebar nav a.sub-link:hover { color: rgba(255,255,255,.9); }
+  #sidebar nav a.sub-link .icon { font-size: 13px; }
+
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #main { margin-left: 0; }
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .res-grid { grid-template-columns: 1fr; }
+    #content { padding: 20px; }
+    .materials-banner { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="brand">
+    <div class="code">CSAI601 · 3 Credits</div>
+    <h1>Generative AI<br>with Claude</h1>
+  </div>
+  <nav>
+    <div class="section-label">Overview</div>
+    <a href="#" class="active" data-page="home"><span class="icon">🏠</span> Home</a>
+    <a href="#" data-page="syllabus"><span class="icon">📋</span> Syllabus & CO-PO</a>
+
+    <div class="section-label">Lecture Notes</div>
+    <a href="#" data-page="unit1"><span class="icon">📘</span> Unit 1 – LLM Foundations</a>
+    <a href="CSAI601_Unit1_Notes.html" class="sub-link"><span class="icon">📄</span> Detailed Notes (HTML)</a>
+    <a href="CSAI601_Unit1_Slides.pptx" download class="sub-link"><span class="icon">📊</span> Slides – 100 slides (PPTX)</a>
+    <a href="#" data-page="unit2"><span class="icon">📗</span> Unit 2 – Prompt Engineering</a>
+    <a href="#" data-page="unit3"><span class="icon">📙</span> Unit 3 – Claude API & Apps</a>
+    <a href="#" data-page="unit4"><span class="icon">📕</span> Unit 4 – Responsible AI</a>
+    <a href="#" data-page="unit5"><span class="icon">📓</span> Unit 5 – Advanced Topics</a>
+
+    <div class="section-label">Assessments</div>
+    <a href="#" data-page="assignments"><span class="icon">📝</span> Assignments</a>
+    <a href="#" data-page="quizzes"><span class="icon">🎯</span> Quizzes</a>
+    <a href="#" data-page="project"><span class="icon">🚀</span> Capstone Project</a>
+
+    <div class="section-label">Resources</div>
+    <a href="#" data-page="resources"><span class="icon">📚</span> Books & Links</a>
+  </nav>
+  <div class="footer">B.Tech CS/IT · 3rd Year Elective<br>© 2025–26 Course Materials</div>
+</aside>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <div class="page-title" id="topbar-title">Home</div>
+    <div class="badges">
+      <span class="badge badge-blue">3 Credits</span>
+      <span class="badge badge-red">36 Hours</span>
+      <span class="badge badge-green">5 Units</span>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ═══════════════ HOME ═══════════════ -->
+    <div class="page active" id="page-home">
+      <div class="hero">
+        <div class="tag">B.Tech CS/IT · 3rd Year Elective</div>
+        <h1>Generative AI with Claude:<br>Principles, Prompting & Application Development</h1>
+        <p>A comprehensive 3-credit course covering the architecture of large language models, systematic prompt engineering, building real-world applications with the Claude API, responsible AI practices, and advanced agentic systems.</p>
+        <div class="meta">
+          <div class="meta-item">Course Code: <span>CSAI601</span></div>
+          <div class="meta-item">Credits: <span>3-0-0</span></div>
+          <div class="meta-item">Hours/Week: <span>3L</span></div>
+          <div class="meta-item">Prerequisites: <span>Basic ML Concepts</span></div>
+          <div class="meta-item">Semester: <span>VI / VII</span></div>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num">5</div><div class="label">Units</div></div>
+        <div class="stat-card"><div class="num">36</div><div class="label">Lecture Hours</div></div>
+        <div class="stat-card"><div class="num">5</div><div class="label">Course Outcomes</div></div>
+        <div class="stat-card"><div class="num">5</div><div class="label">Assignments</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Course Outcomes (COs)</h2>
+        <table>
+          <thead><tr><th>CO</th><th>Statement</th><th>Bloom's Level</th></tr></thead>
+          <tbody>
+            <tr><td><strong>CO1</strong></td><td>Understand the evolution of NLP, transformer architecture, and how Claude is built upon Constitutional AI principles.</td><td>L1 – Remember / L2 – Understand</td></tr>
+            <tr><td><strong>CO2</strong></td><td>Apply systematic prompt engineering strategies — zero-shot, few-shot, CoT, role-play — to design effective LLM interactions.</td><td>L3 – Apply</td></tr>
+            <tr><td><strong>CO3</strong></td><td>Develop functional applications using the Claude API, including chatbots, tool-use agents, and RAG pipelines.</td><td>L3 – Apply / L4 – Analyze</td></tr>
+            <tr><td><strong>CO4</strong></td><td>Evaluate AI systems for bias, hallucinations, safety risks, and ethical implications using established frameworks.</td><td>L4 – Analyze / L5 – Evaluate</td></tr>
+            <tr><td><strong>CO5</strong></td><td>Design and implement end-to-end intelligent solutions integrating advanced Claude capabilities such as multi-modal input and agentic workflows.</td><td>L5 – Evaluate / L6 – Create</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Evaluation Scheme</h2>
+        <table class="eval-row">
+          <thead><tr><th>Component</th><th>Frequency</th><th>Marks</th><th>COs Mapped</th></tr></thead>
+          <tbody>
+            <tr><td>Assignments</td><td>5 (one per unit)</td><td>20</td><td>CO1–CO5</td></tr>
+            <tr><td>Unit Quizzes</td><td>5 (one per unit)</td><td>10</td><td>CO1–CO5</td></tr>
+            <tr><td>Mid-Semester Exam</td><td>1 (after Unit 2)</td><td>30</td><td>CO1, CO2</td></tr>
+            <tr><td>End-Semester Exam</td><td>1</td><td>40</td><td>CO1–CO5</td></tr>
+            <tr><td><strong>Capstone Project</strong></td><td>Group (2–3 students)</td><td>Bonus 10</td><td>CO3, CO5</td></tr>
+            <tr><td><strong>Total</strong></td><td></td><td><strong>100</strong></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" style="border-left:4px solid #198754;">
+        <h2>✅ Available Course Materials</h2>
+        <p style="font-size:13px; color:#555; margin-bottom:14px;">The following materials are ready for download and use:</p>
+        <table>
+          <thead><tr><th>Material</th><th>Description</th><th style="text-align:center">Action</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>📄 Unit 1 Lecture Notes</strong></td>
+              <td style="font-size:13px;">Textbook-style HTML notes for all 7 L01–L07 lectures with formulas, code, analogies</td>
+              <td style="text-align:center"><a href="CSAI601_Unit1_Notes.html" style="background:#e94560;color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;">Open</a></td>
+            </tr>
+            <tr>
+              <td><strong>📊 Unit 1 Slides (100)</strong></td>
+              <td style="font-size:13px;">100-slide PPTX presentation for classroom use — 14 slides per lecture, dark theme</td>
+              <td style="text-align:center"><a href="CSAI601_Unit1_Slides.pptx" download download style="background:#0f3460;color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;">Download</a></td>
+            </tr>
+            <tr>
+              <td><strong>📋 Syllabus (DOCX)</strong></td>
+              <td style="font-size:13px;">Formal Word document syllabus with CO-PO mapping, 15-week plan, evaluation scheme</td>
+              <td style="text-align:center"><a href="CSAI601_Syllabus.docx" download style="background:#0f3460;color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;">Download</a></td>
+            </tr>
+            <tr>
+              <td><strong>📝 Assignments PDF</strong></td>
+              <td style="font-size:13px;">5 assignments (one per unit), 4 marks each — ready to distribute to students</td>
+              <td style="text-align:center"><a href="CSAI601_Assignments.pdf" style="background:#0f3460;color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;">Download</a></td>
+            </tr>
+            <tr>
+              <td><strong>🎯 Quizzes + Answer Keys</strong></td>
+              <td style="font-size:13px;">5 quizzes with MCQs and answer keys highlighted in green — instructor copy</td>
+              <td style="text-align:center"><a href="CSAI601_Quizzes_InstructorKey.pdf" style="background:#0f3460;color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;">Download</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Unit-wise Overview</h2>
+        <table>
+          <thead><tr><th>#</th><th>Unit Title</th><th>Hours</th><th>COs</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Foundations of Large Language Models</td><td>7</td><td>CO1</td></tr>
+            <tr><td>2</td><td>Prompt Engineering</td><td>8</td><td>CO2</td></tr>
+            <tr><td>3</td><td>Building Applications with Claude API</td><td>8</td><td>CO3</td></tr>
+            <tr><td>4</td><td>Responsible AI, Safety &amp; Ethics</td><td>6</td><td>CO4</td></tr>
+            <tr><td>5</td><td>Advanced Topics &amp; Capstone</td><td>7</td><td>CO3, CO5</td></tr>
+            <tr><td colspan="2"><strong>Total</strong></td><td><strong>36</strong></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ SYLLABUS ═══════════════ -->
+    <div class="page" id="page-syllabus">
+      <div class="section-h">Syllabus &amp; CO-PO Mapping</div>
+      <div class="section-sub">CSAI601 · 3-0-0 · B.Tech CS/IT · Semester VI/VII</div>
+
+      <div class="card">
+        <h2>Unit 1 – Foundations of Large Language Models (7 hrs)</h2>
+        <p>History of AI and NLP: rule-based to statistical to neural. Word embeddings (Word2Vec, GloVe). Attention mechanism. Transformer architecture (encoder-decoder, multi-head attention, positional encoding). BERT, GPT lineage. Introduction to Claude: Anthropic's mission, Claude 3 family. Constitutional AI (CAI): principles, RLHF vs. RLAIF. Claude's key capabilities: long context, vision, code generation. Hands-on: first API call with Python.</p>
+      </div>
+      <div class="card">
+        <h2>Unit 2 – Prompt Engineering (8 hrs)</h2>
+        <p>What is prompt engineering and why it matters. Zero-shot prompting. Few-shot prompting with examples. Chain-of-Thought (CoT) prompting. Role-playing and system prompts. Structured output (JSON, XML, Markdown). Context management: token limits, conversation history. Advanced: ReAct prompting, Tree of Thoughts, Self-consistency. Negative prompting and guardrails. Practical workshop: prompt optimisation for a real task.</p>
+      </div>
+      <div class="card">
+        <h2>Unit 3 – Building Applications with Claude API (8 hrs)</h2>
+        <p>Claude API overview: authentication, models, rate limits. Python Anthropic SDK: messages API, streaming. Building a multi-turn chatbot. Tool use / function calling: schema definition, result passing. Retrieval-Augmented Generation (RAG): embeddings, vector databases, integration with Claude. Vision API: image inputs, multimodal prompts. Project lab: design and build a functional application end-to-end.</p>
+      </div>
+      <div class="card">
+        <h2>Unit 4 – Responsible AI, Safety &amp; Ethics (6 hrs)</h2>
+        <p>Bias in LLMs: sources, types, mitigation. Hallucinations: causes, detection, grounding strategies. Constitutional AI deep dive: principles list, RLAIF training loop. Privacy and data security in AI applications. Responsible Use Guidelines: Anthropic's policies, acceptable use. Case studies: AI misuse incidents, societal impact. AI governance frameworks: EU AI Act overview, responsible AI checklist.</p>
+      </div>
+      <div class="card">
+        <h2>Unit 5 – Advanced Topics &amp; Capstone (7 hrs)</h2>
+        <p>Agentic AI: agent loops, planning, memory, tools. Multi-agent architectures. Model Context Protocol (MCP): connectors, servers. Claude in production: deployment patterns, cost optimisation, latency. Fine-tuning concepts vs. prompt tuning vs. RAG. Industry applications: healthcare, legal, education, coding assistants. The future of LLMs: multimodality, reasoning, alignment. Capstone project presentations and peer review.</p>
+      </div>
+
+      <hr class="divider">
+      <div class="section-h">Course Outcomes → Program Outcomes Mapping</div>
+      <div class="section-sub">Correlation: 3 = High, 2 = Medium, 1 = Low (blank = no significant correlation)</div>
+
+      <div class="card">
+        <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>CO \ PO</th>
+              <th>PO1<br><small>Engg. Knowledge</small></th>
+              <th>PO2<br><small>Problem Analysis</small></th>
+              <th>PO3<br><small>Design/Dev</small></th>
+              <th>PO4<br><small>Investigation</small></th>
+              <th>PO5<br><small>Modern Tools</small></th>
+              <th>PO6<br><small>Engineer &amp; Society</small></th>
+              <th>PO7<br><small>Environment</small></th>
+              <th>PO8<br><small>Ethics</small></th>
+              <th>PO9<br><small>Team Work</small></th>
+              <th>PO10<br><small>Communication</small></th>
+              <th>PO11<br><small>Project Mgmt</small></th>
+              <th>PO12<br><small>Lifelong Learning</small></th>
+              <th>PSO1<br><small>SW Dev</small></th>
+              <th>PSO2<br><small>Computation</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>CO1</strong></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-med">2</span></td>
+              <td></td><td></td><td></td><td></td>
+              <td><span class="co-low">1</span></td>
+              <td></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+            </tr>
+            <tr>
+              <td><strong>CO2</strong></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td></td><td></td><td></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-med">2</span></td>
+              <td></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+            </tr>
+            <tr>
+              <td><strong>CO3</strong></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-low">1</span></td>
+              <td></td><td></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-high">3</span></td>
+            </tr>
+            <tr>
+              <td><strong>CO4</strong></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-med">2</span></td>
+              <td></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-low">1</span></td>
+            </tr>
+            <tr>
+              <td><strong>CO5</strong></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-low">1</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-med">2</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-high">3</span></td>
+              <td><span class="co-high">3</span></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <p style="margin-top:14px; font-size:12px; color:var(--muted);">PO1–PO12: NBA/ABET Program Outcomes for Engineering. PSO1–PSO2: Program Specific Outcomes for CS/IT.</p>
+      </div>
+
+      <hr class="divider">
+      <div class="section-h">Prescribed &amp; Reference Books</div>
+      <div style="margin-top:16px">
+        <div class="card">
+          <h2>Textbooks</h2>
+          <table>
+            <thead><tr><th>#</th><th>Title</th><th>Author(s)</th><th>Publisher / Source</th></tr></thead>
+            <tbody>
+              <tr><td>T1</td><td>Prompt Engineering for LLMs</td><td>John Berryman &amp; Albert Ziegler</td><td>O'Reilly Media, 2024</td></tr>
+              <tr><td>T2</td><td>Natural Language Processing with Transformers</td><td>Lewis Tunstall et al.</td><td>O'Reilly Media, 2022</td></tr>
+              <tr><td>T3</td><td>Building LLM Powered Applications</td><td>Valentina Alto</td><td>Packt, 2023</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>Reference Books</h2>
+          <table>
+            <thead><tr><th>#</th><th>Title</th><th>Author(s)</th><th>Publisher / Source</th></tr></thead>
+            <tbody>
+              <tr><td>R1</td><td>Attention Is All You Need (Paper)</td><td>Vaswani et al.</td><td>NeurIPS 2017, arXiv:1706.03762</td></tr>
+              <tr><td>R2</td><td>Constitutional AI: Harmlessness from AI Feedback</td><td>Anthropic Team</td><td>Anthropic Research, 2022</td></tr>
+              <tr><td>R3</td><td>Claude API Documentation</td><td>Anthropic</td><td>docs.anthropic.com</td></tr>
+              <tr><td>R4</td><td>AI Ethics (MIT Press Essential Knowledge)</td><td>Mark Coeckelbergh</td><td>MIT Press, 2020</td></tr>
+              <tr><td>R5</td><td>Dive into Deep Learning</td><td>Zhang, Lipton, Li, Smola</td><td>d2l.ai (free online)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 1 ═══════════════ -->
+    <div class="page" id="page-unit1">
+      <div class="section-h">Unit 1 — Foundations of Large Language Models</div>
+      <div class="section-sub">7 Lecture Hours · Maps to CO1</div>
+
+      <!-- Unit 1 Materials Banner -->
+      <div class="materials-banner">
+        <div class="mb-left">
+          <h3>📦 Unit 1 Study Materials Available</h3>
+          <p>Detailed textbook-style lecture notes (all 7 lectures) &nbsp;·&nbsp; 100-slide presentation deck</p>
+        </div>
+        <div class="mb-btns">
+          <a href="CSAI601_Unit1_Notes.html" class="btn-material btn-notes">
+            <span class="icon">📄</span> Open Lecture Notes
+          </a>
+          <a href="CSAI601_Unit1_Slides.pptx" download class="btn-material btn-slides">
+            <span class="icon">📊</span> Download Slides (PPTX)
+          </a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Unit Learning Objectives</h2>
+        <p>By the end of this unit, students will be able to: (1) trace the evolution of NLP from rule-based to transformer-based systems; (2) explain the multi-head self-attention mechanism and positional encoding; (3) describe the Constitutional AI training paradigm; (4) enumerate Claude's key capabilities; (5) make a basic API call to Claude using Python.</p>
+      </div>
+
+      <ul class="lecture-list">
+        <li>
+          <span class="lec-num">L01</span>
+          <div class="lec-body">
+            <div class="lec-title">History of AI &amp; NLP — From Rules to Neural Nets</div>
+            <div class="lec-desc">ELIZA, symbolic AI, statistical NLP (n-grams, HMMs), word embeddings (Word2Vec 2013, GloVe 2014), limitations of RNNs and LSTMs, the vanishing gradient problem. The "Attention is All You Need" moment (2017).</div>
+            <div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div>
+          </div>
+        </li>
+        <li>
+          <span class="lec-num">L02</span>
+          <div class="lec-body">
+            <div class="lec-title">Deep Dive: Transformer Architecture</div>
+            <div class="lec-desc">Encoder-decoder structure. Self-attention: Query, Key, Value matrices. Multi-head attention. Positional encoding (sinusoidal). Layer normalisation. Feed-forward sub-layers. Complexity O(n²). BERT (encoder-only) vs GPT (decoder-only) vs T5 (seq2seq).</div>
+            <div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div>
+          </div>
+        </li>
+        <li>
+          <span class="lec-num">L03</span>
+          <div class="lec-body">
+            <div class="lec-title">From GPT-3 to Claude — The LLM Landscape</div>
+            <div class="lec-desc">Scaling laws (Kaplan et al.). RLHF pipeline. ChatGPT breakthrough. Anthropic's founding story. Claude 1 → Claude 3 family (Haiku, Sonnet, Opus). Competitive landscape: GPT-4o, Gemini, Llama. Differentiation: safety, long context (200K tokens), honesty.</div>
+            <div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div>
+          </div>
+        </li>
+        <li>
+          <span class="lec-num">L04</span>
+          <div class="lec-body">
+            <div class="lec-title">Constitutional AI — How Claude is Trained</div>
+            <div class="lec-desc">Reinforcement Learning from Human Feedback (RLHF): reward model, PPO. Constitutional AI (CAI): generating a "constitution" of principles. RLAIF: AI providing feedback instead of humans. HHH framework: Helpful, Harmless, Honest. Red-teaming and safety evaluation.</div>
+            <div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div>
+          </div>
+        </li>
+        <li>
+          <span class="lec-num">L05</span>
+          <div class="lec-body">
+            <div class="lec-title">Claude's Capabilities — Text, Vision, Code</div>
+            <div class="lec-desc">Long context window (200K tokens): use-cases and challenges. Native multimodality: image understanding, chart analysis. Code generation and execution. Tool use. Multilingual capability. Context window management strategies. Tokenisation: BPE, SentencePiece.</div>
+            <div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div>
+          </div>
+        </li>
+        <li>
+          <span class="lec-num">L06</span>
+          <div class="lec-body">
+            <div class="lec-title">Tokenisation, Temperature &amp; Sampling Strategies</div>
+            <div class="lec-desc">Byte-Pair Encoding (BPE). Token counting. Temperature, top-p, top-k sampling. Greedy vs beam search. Stop sequences. Max tokens. How these parameters shape output quality. Practical demonstration.</div>
+            <div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div>
+          </div>
+        </li>
+        <li>
+          <span class="lec-num">L07</span>
+          <div class="lec-body">
+            <div class="lec-title">Lab — First API Call &amp; Exploring the Playground</div>
+            <div class="lec-desc">Setting up Anthropic API key. Python SDK install (<code>pip install anthropic</code>). <code>client.messages.create()</code>. Passing system + user messages. Inspecting response object. Counting tokens. Exploring claude.ai playground. Live demo: build a one-function summariser.</div>
+            <div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div>
+          </div>
+        </li>
+      </ul>
+
+      <div class="card" style="margin-top:20px">
+        <h2>Key Concepts Summary</h2>
+        <table>
+          <thead><tr><th>Concept</th><th>One-line Definition</th></tr></thead>
+          <tbody>
+            <tr><td>Self-Attention</td><td>Mechanism allowing each token to attend to all other tokens weighted by relevance.</td></tr>
+            <tr><td>RLHF</td><td>Training technique using human preference labels to shape model behaviour via a reward model.</td></tr>
+            <tr><td>Constitutional AI</td><td>Anthropic's method of using a set of written principles + AI feedback to make models safer without constant human labelling.</td></tr>
+            <tr><td>Temperature</td><td>Controls randomness in sampling; 0 = deterministic, 1 = standard, &gt;1 = creative/random.</td></tr>
+            <tr><td>BPE</td><td>Byte-Pair Encoding — sub-word tokenisation that balances vocabulary size and coverage.</td></tr>
+            <tr><td>Long Context</td><td>Claude supports up to 200,000 tokens in a single context window, enabling full-document analysis.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Unit 1 Detailed Materials Card -->
+      <div class="card" style="margin-top:20px; border-left: 4px solid #e94560;">
+        <h2>📚 Unit 1 — Full Study Materials</h2>
+        <p style="margin-bottom:16px;">Two dedicated resources have been created for Unit 1 to support both self-study and classroom teaching:</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+          <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:10px; padding:18px;">
+            <div style="font-size:28px; margin-bottom:8px;">📄</div>
+            <div style="font-weight:700; font-size:15px; color:#0f1f3d; margin-bottom:6px;">Detailed Lecture Notes</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• Covers all 7 lectures end-to-end</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• All formulas, analogies &amp; code examples</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• Searchable, sidebar navigation</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• Dark/light mode toggle</div>
+            <div style="font-size:13px; color:#555; margin-bottom:14px;">• Copy-code buttons for all snippets</div>
+            <a href="CSAI601_Unit1_Notes.html"
+               style="display:inline-block; background:#e94560; color:#fff; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none;">
+              Open in Browser →
+            </a>
+          </div>
+
+          <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:10px; padding:18px;">
+            <div style="font-size:28px; margin-bottom:8px;">📊</div>
+            <div style="font-weight:700; font-size:15px; color:#0f1f3d; margin-bottom:6px;">Presentation Slides (PPTX)</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• 100 slides across 7 lectures</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• 14 slides per lecture (min 12)</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• Dark theme, brand colours</div>
+            <div style="font-size:13px; color:#555; margin-bottom:4px;">• All formulas + code slides included</div>
+            <div style="font-size:13px; color:#555; margin-bottom:14px;">• Section hero + summary slides</div>
+            <a href="CSAI601_Unit1_Slides.pptx" download
+               style="display:inline-block; background:#0f3460; color:#fff; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:600; text-decoration:none;">
+              Download PPTX ↓
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ UNIT 2 ═══════════════ -->
+    <div class="page" id="page-unit2">
+      <div class="section-h">Unit 2 — Prompt Engineering</div>
+      <div class="section-sub">8 Lecture Hours · Maps to CO2</div>
+
+      <div class="card">
+        <h2>Unit Learning Objectives</h2>
+        <p>Students will: (1) distinguish between zero-shot, few-shot, and chain-of-thought prompting; (2) design system prompts and role-play personas for specialised tasks; (3) produce structured outputs (JSON, XML) through prompt design; (4) apply ReAct and Tree-of-Thoughts strategies; (5) systematically optimise prompts using iteration and evaluation.</p>
+      </div>
+
+      <ul class="lecture-list">
+        <li><span class="lec-num">L08</span><div class="lec-body"><div class="lec-title">Introduction to Prompt Engineering</div><div class="lec-desc">Why prompting matters. The prompt-as-program metaphor. Anatomy of a prompt: instruction, context, input, output format. Prompt vs fine-tuning trade-offs. Anthropic's prompt engineering guide overview.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L09</span><div class="lec-body"><div class="lec-title">Zero-shot &amp; Few-shot Prompting</div><div class="lec-desc">Zero-shot: relying purely on instruction. Few-shot: in-context examples as implicit training. Selecting and ordering examples. Label formatting. Sensitivity to example quality. Brown et al. (2020) GPT-3 findings. Hands-on: classification task.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L10</span><div class="lec-body"><div class="lec-title">Chain-of-Thought Prompting</div><div class="lec-desc">Wei et al. (2022): "Let's think step by step." Manual CoT vs auto CoT. Zero-shot CoT. Self-consistency (multiple reasoning paths → majority vote). Program-of-thought prompting. When CoT helps and when it doesn't. Hands-on: multi-step math and logic.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L11</span><div class="lec-body"><div class="lec-title">System Prompts, Role-Playing &amp; Personas</div><div class="lec-desc">The system/user/assistant turn structure. Writing effective system prompts for Claude. Persona assignment. Tone and style control. Guardrails within system prompts. Context injection. Practical: build a domain expert assistant.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L12</span><div class="lec-body"><div class="lec-title">Structured Outputs — JSON, XML, Markdown</div><div class="lec-desc">Requesting JSON-formatted responses. Schema specification in prompts. Claude's native XML affinity. Markdown output for documents. Output validation and error handling. Using Claude for data extraction pipelines. Hands-on: extract structured data from unstructured text.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L13</span><div class="lec-body"><div class="lec-title">Context Management &amp; Memory Strategies</div><div class="lec-desc">Token limit arithmetic. Summarisation strategies. Sliding window context. External memory with embeddings. Injecting retrieved context. Managing conversation history in multi-turn applications. Cost vs context length trade-offs.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L14</span><div class="lec-body"><div class="lec-title">Advanced Techniques — ReAct, ToT, Metacognition</div><div class="lec-desc">ReAct framework: Reasoning + Acting in interleaved steps. Tree of Thoughts: exploring multiple reasoning branches. Reflection and self-critique prompting. Meta-prompting: asking the model to improve its own prompt. Negative prompting and constraint injection.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L15</span><div class="lec-body"><div class="lec-title">Workshop — Prompt Optimisation Lab</div><div class="lec-desc">Iterative prompt refinement process. Evaluation rubrics for prompt output. A/B testing prompts. Prompt debugging: identifying failure modes. Group activity: each team optimises a prompt for a given task and presents results.</div><div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div></div></li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════ UNIT 3 ═══════════════ -->
+    <div class="page" id="page-unit3">
+      <div class="section-h">Unit 3 — Building Applications with Claude API</div>
+      <div class="section-sub">8 Lecture Hours · Maps to CO3</div>
+
+      <div class="card">
+        <h2>Unit Learning Objectives</h2>
+        <p>Students will: (1) configure and use the Anthropic Python SDK; (2) implement a multi-turn chatbot; (3) integrate tool/function calling; (4) build a basic RAG pipeline; (5) process image inputs via the Vision API; (6) deploy a mini application end-to-end.</p>
+      </div>
+
+      <ul class="lecture-list">
+        <li><span class="lec-num">L16</span><div class="lec-body"><div class="lec-title">Claude API Architecture &amp; Authentication</div><div class="lec-desc">REST API structure. API keys, environment variables, rate limits. Available models (claude-3-5-sonnet, claude-3-haiku, etc.). Pricing model: input + output tokens. SDK vs raw HTTP. Error types: rate limit, context length, content policy. Best practices for key management.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L17</span><div class="lec-body"><div class="lec-title">Python SDK Deep Dive — Messages API</div><div class="lec-desc"><code>anthropic.Anthropic()</code> client. <code>messages.create()</code> parameters. Streaming responses with <code>stream=True</code>. Async SDK usage (<code>AsyncAnthropic</code>). Response object structure: stop_reason, usage, content. Handling multi-content blocks. Live coding session.</div><div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div></div></li>
+        <li><span class="lec-num">L18</span><div class="lec-body"><div class="lec-title">Building a Multi-turn Chatbot</div><div class="lec-desc">Conversation history as a list of messages. Appending user/assistant turns. System prompt design. Stateless vs stateful architectures. Flask/FastAPI backend integration. Simple web front-end. Streaming UI with Server-Sent Events. Hands-on: build a domain-specific assistant.</div><div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div></div></li>
+        <li><span class="lec-num">L19</span><div class="lec-body"><div class="lec-title">Tool Use &amp; Function Calling</div><div class="lec-desc">Tool definition schema (JSON). Passing tools to the API. Claude's tool_use content blocks. Executing tool calls and returning results. Multi-tool agents. Practical use cases: web search, calculator, database query. Error handling in tool loops.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L20</span><div class="lec-body"><div class="lec-title">Retrieval-Augmented Generation (RAG)</div><div class="lec-desc">RAG architecture: indexing, retrieval, generation. Text chunking strategies. Embeddings (OpenAI, HuggingFace Sentence Transformers). Vector databases: Chroma, FAISS, Pinecone. Retrieval: cosine similarity, MMR. Injecting retrieved docs into Claude context. Evaluation: faithfulness, relevance.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L21</span><div class="lec-body"><div class="lec-title">Vision API — Multimodal Inputs</div><div class="lec-desc">Passing images: base64 encoding vs URL reference. Supported formats (JPEG, PNG, GIF, WebP). Image size limits and token costs. Use cases: document parsing, chart analysis, OCR-free data extraction, UI screenshot analysis. Multi-image prompts. Hands-on: build an image Q&amp;A tool.</div><div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div></div></li>
+        <li><span class="lec-num">L22</span><div class="lec-body"><div class="lec-title">Production Considerations — Caching, Streaming, Cost</div><div class="lec-desc">Prompt caching API (beta): reduce costs on repeated context. Batch API for async workloads. Latency optimisation: streaming, model selection. Cost estimation formula. Monitoring with logging middleware. Error retry strategies (exponential backoff). Testing LLM applications: deterministic vs non-deterministic.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L23</span><div class="lec-body"><div class="lec-title">Project Lab — End-to-End Application Build</div><div class="lec-desc">Students build a complete application in groups. Options: (a) PDF Q&amp;A RAG system, (b) multi-tool research assistant, (c) code review bot. Peer presentation (5 min each). Evaluation criteria: functionality, code quality, prompt design, error handling.</div><div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div></div></li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════ UNIT 4 ═══════════════ -->
+    <div class="page" id="page-unit4">
+      <div class="section-h">Unit 4 — Responsible AI, Safety &amp; Ethics</div>
+      <div class="section-sub">6 Lecture Hours · Maps to CO4</div>
+
+      <div class="card">
+        <h2>Unit Learning Objectives</h2>
+        <p>Students will: (1) identify sources and types of bias in LLMs; (2) explain why LLMs hallucinate and apply grounding strategies; (3) analyse Constitutional AI as a safety mechanism; (4) apply privacy and data security principles to AI apps; (5) evaluate AI systems against ethical frameworks.</p>
+      </div>
+
+      <ul class="lecture-list">
+        <li><span class="lec-num">L24</span><div class="lec-body"><div class="lec-title">Bias in LLMs — Sources, Types &amp; Mitigation</div><div class="lec-desc">Training data bias: historical, representation, measurement. Social biases: gender, race, religion. Amplification through RLHF. Evaluation benchmarks: WinoBias, BBQ, TruthfulQA. Mitigation: data curation, adversarial training, post-hoc filtering. Anthropic's internal red-teaming process.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L25</span><div class="lec-body"><div class="lec-title">Hallucinations — Causes, Detection &amp; Grounding</div><div class="lec-desc">Definition and taxonomy of hallucinations (intrinsic vs extrinsic). Why models confabulate: training objective mismatch. Detection techniques: self-consistency checking, chain-of-verification (CoVe). Grounding strategies: RAG, tool use, source citation. Building verifiable AI pipelines.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L26</span><div class="lec-body"><div class="lec-title">Constitutional AI Deep Dive &amp; Governance</div><div class="lec-desc">CAI paper walkthrough. The 58-principle constitution. RLAIF training loop diagram. Comparison with OpenAI's approach. EU AI Act: risk categories, high-risk system requirements. UNESCO AI Ethics framework. Responsible AI maturity model. Industry self-regulation vs regulation.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L27</span><div class="lec-body"><div class="lec-title">Privacy, Security &amp; Data Protection in AI</div><div class="lec-desc">PII in training data: risks and examples. Membership inference attacks. Prompt injection attacks. Data retention policies. GDPR implications for AI products. Designing privacy-preserving AI pipelines: anonymisation, differential privacy concepts. Secure API key management.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L28</span><div class="lec-body"><div class="lec-title">Responsible Use Guidelines &amp; Acceptable Use</div><div class="lec-desc">Anthropic's Acceptable Use Policy. Prohibited uses: CSAM, weapon design, mass surveillance. Content moderation approaches. Designing safe applications: output filtering, rate limiting, logging. Responsible disclosure. Building AI for accessibility and equity. Developer responsibilities.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L29</span><div class="lec-body"><div class="lec-title">Case Studies &amp; Ethical Discussion Seminar</div><div class="lec-desc">Case 1: Bing/Sydney persona incidents. Case 2: AI in hiring — Amazon's scrapped tool. Case 3: Medical AI misdiagnosis risks. Case 4: Deepfakes and disinformation. Case 5: Claude refusing harmful requests. Socratic discussion. Students present an AI ethics scenario analysis (group activity).</div><div class="lec-tags"><span class="tag-sm tag-discussion">Discussion</span></div></div></li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════ UNIT 5 ═══════════════ -->
+    <div class="page" id="page-unit5">
+      <div class="section-h">Unit 5 — Advanced Topics &amp; Capstone</div>
+      <div class="section-sub">7 Lecture Hours · Maps to CO3, CO5</div>
+
+      <div class="card">
+        <h2>Unit Learning Objectives</h2>
+        <p>Students will: (1) explain agentic AI and multi-agent architectures; (2) understand Model Context Protocol (MCP); (3) compare deployment strategies for LLM applications; (4) articulate future directions in LLM research; (5) design and present a complete AI solution using Claude.</p>
+      </div>
+
+      <ul class="lecture-list">
+        <li><span class="lec-num">L30</span><div class="lec-body"><div class="lec-title">Agentic AI — Agent Loops &amp; Planning</div><div class="lec-desc">What is an agent? Perceive-Plan-Act loop. ReAct agent implementation. Memory types: in-context, external (vector DB), episodic. Tool libraries: web search, code execution, file I/O. LangChain / LangGraph overview. Building a simple Claude agent from scratch.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L31</span><div class="lec-body"><div class="lec-title">Multi-Agent Systems</div><div class="lec-desc">Why multi-agent? Parallelism, specialisation, verification. Orchestrator-worker pattern. Critic-generator pattern. Agent communication protocols. AutoGen / CrewAI frameworks. Failure modes: agent loops, conflicting goals. Hands-on: two-agent debate system.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L32</span><div class="lec-body"><div class="lec-title">Model Context Protocol (MCP)</div><div class="lec-desc">What is MCP? MCP host, client, server architecture. MCP servers as tool providers (file system, databases, APIs). Building a simple MCP server. Connecting Claude Desktop to local MCP servers. Practical: MCP server for a PostgreSQL database. Ecosystem and marketplace.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L33</span><div class="lec-body"><div class="lec-title">Claude in Production — Deployment Patterns &amp; Cost</div><div class="lec-desc">Architecture patterns: synchronous API, async batch, streaming. Load balancing and fallback models. Prompt caching ROI. Observability: LangSmith, Helicone, custom logging. Cost optimisation: model selection, caching, compression. SLA considerations. Security in production: input sanitisation, output filtering.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L34</span><div class="lec-body"><div class="lec-title">Industry Applications &amp; The Future of LLMs</div><div class="lec-desc">Healthcare: clinical note summarisation, drug discovery assistance. Legal: contract analysis, case research. Education: personalised tutoring, grading assistance. Software engineering: code generation, review, testing. Upcoming frontiers: extended thinking (Claude's reasoning mode), better reasoning, multimodal generation, world models. AI safety long-term perspective.</div><div class="lec-tags"><span class="tag-sm tag-lecture">Lecture</span></div></div></li>
+        <li><span class="lec-num">L35</span><div class="lec-body"><div class="lec-title">Guest Lecture / Industry Interaction</div><div class="lec-desc">Invited speaker (industry practitioner or researcher) on real-world LLM deployment challenges. Q&amp;A session. Alternative: recorded talk + faculty-moderated discussion on current AI news.</div><div class="lec-tags"><span class="tag-sm tag-discussion">Discussion</span></div></div></li>
+        <li><span class="lec-num">L36</span><div class="lec-body"><div class="lec-title">Capstone Project Presentations</div><div class="lec-desc">Group presentations (10 min + 5 min Q&amp;A). Evaluation panel: faculty + peers. Criteria: problem clarity, solution design, Claude API usage, prompt quality, live demo, code quality, ethical considerations. Best project award. Course wrap-up and future learning paths.</div><div class="lec-tags"><span class="tag-sm tag-lab">Lab</span></div></div></li>
+      </ul>
+    </div>
+
+    <!-- ═══════════════ ASSIGNMENTS ═══════════════ -->
+    <div class="page" id="page-assignments">
+      <div class="section-h">Assignments</div>
+      <div class="section-sub">5 Assignments · 20 Marks Total · One per Unit</div>
+
+      <!-- A1 -->
+      <div class="assign-card">
+        <div class="assign-header">
+          <h3>Assignment 1 — LLM Architecture Analysis</h3>
+          <div><span class="badge badge-blue">Unit 1 · CO1</span> <span class="badge badge-red">4 Marks</span></div>
+        </div>
+        <div class="assign-body">
+          <p><strong>Objective:</strong> Demonstrate understanding of transformer architecture and Constitutional AI principles.</p>
+          <p><strong>Instructions:</strong> Answer ALL questions. Submit as a PDF report (max 6 pages). Include diagrams where appropriate.</p>
+          <ol class="q-list">
+            <li>Draw a detailed diagram of the Transformer encoder block and label: multi-head attention, feed-forward network, residual connections, layer normalisation. Explain the role of each component. <span class="marks">[1 mark]</span></li>
+            <li>Explain the self-attention mechanism mathematically. Given Q, K, V matrices, derive the attention output. Why is the scaling factor 1/√d<sub>k</sub> necessary? <span class="marks">[1 mark]</span></li>
+            <li>Compare RLHF and Constitutional AI (RLAIF): (a) training pipeline differences, (b) data requirements, (c) scalability, (d) limitations. Use a comparison table. <span class="marks">[1 mark]</span></li>
+            <li>Write a Python script that makes a call to Claude API, sends a 5-message conversation history, and prints the response with token usage. Include error handling for rate limits. Submit the script and a screenshot of output. <span class="marks">[1 mark]</span></li>
+          </ol>
+          <p style="margin-top:12px; font-size:12.5px; color:var(--muted);">Submission: PDF + .py file via LMS · Due: End of Week 2</p>
+        </div>
+      </div>
+
+      <!-- A2 -->
+      <div class="assign-card">
+        <div class="assign-header">
+          <h3>Assignment 2 — Prompt Engineering Portfolio</h3>
+          <div><span class="badge badge-blue">Unit 2 · CO2</span> <span class="badge badge-red">4 Marks</span></div>
+        </div>
+        <div class="assign-body">
+          <p><strong>Objective:</strong> Apply and compare different prompting techniques on real tasks.</p>
+          <ol class="q-list">
+            <li>Choose a text classification task (e.g., sentiment analysis, topic classification). Implement zero-shot, 3-shot, and 5-shot prompts for Claude. Report accuracy on 20 test samples for each. Analyse results. <span class="marks">[1 mark]</span></li>
+            <li>Design a Chain-of-Thought prompt for a 5-step word problem. Show the full prompt and Claude's response. Then apply Self-Consistency (3 runs) and report majority answer. <span class="marks">[1 mark]</span></li>
+            <li>Write a system prompt that turns Claude into a "Senior Python Code Reviewer" persona. Test it on 3 different code snippets. Evaluate output quality using a rubric you define. <span class="marks">[1 mark]</span></li>
+            <li>Apply the ReAct framework manually (without agent loop): write a prompt that makes Claude interleave "Thought:", "Action:", "Observation:" steps to answer a multi-hop question. Include 3 complete examples. <span class="marks">[1 mark]</span></li>
+          </ol>
+          <p style="margin-top:12px; font-size:12.5px; color:var(--muted);">Submission: Jupyter Notebook (.ipynb) + PDF report · Due: End of Week 4</p>
+        </div>
+      </div>
+
+      <!-- A3 -->
+      <div class="assign-card">
+        <div class="assign-header">
+          <h3>Assignment 3 — Build a Claude-Powered Application</h3>
+          <div><span class="badge badge-blue">Unit 3 · CO3</span> <span class="badge badge-red">4 Marks</span></div>
+        </div>
+        <div class="assign-body">
+          <p><strong>Objective:</strong> Develop a working application using the Claude API. This is an individual mini-project.</p>
+          <p><strong>Choose ONE of the following application tracks:</strong></p>
+          <ol class="q-list">
+            <li><strong>Track A — RAG Document Assistant:</strong> Build a system that ingests a PDF (min 20 pages), chunks it, embeds it (any embedding model), stores in Chroma/FAISS, and answers user questions using Claude with retrieved context. Evaluate on 10 questions with and without RAG. <span class="marks">[4 marks]</span></li>
+            <li><strong>Track B — Tool-Use Agent:</strong> Build an agent with at least 3 tools (e.g., web search, calculator, weather API). Implement the tool loop manually using the Anthropic SDK. Demonstrate 5 multi-step queries where multiple tools are used. <span class="marks">[4 marks]</span></li>
+            <li><strong>Track C — Vision Application:</strong> Build an application that accepts image input and answers questions about the image. Implement batch processing of 10 images. Add a simple web UI using Streamlit or Gradio. <span class="marks">[4 marks]</span></li>
+          </ol>
+          <p style="margin-top:8px;font-size:13px;">All tracks must include: (a) clean Python code with comments, (b) README with setup instructions, (c) cost estimation for 100 API calls, (d) error handling.</p>
+          <p style="margin-top:12px; font-size:12.5px; color:var(--muted);">Submission: GitHub repo link + 2-page write-up · Due: End of Week 6</p>
+        </div>
+      </div>
+
+      <!-- A4 -->
+      <div class="assign-card">
+        <div class="assign-header">
+          <h3>Assignment 4 — AI Ethics Case Study Report</h3>
+          <div><span class="badge badge-blue">Unit 4 · CO4</span> <span class="badge badge-red">4 Marks</span></div>
+        </div>
+        <div class="assign-body">
+          <p><strong>Objective:</strong> Critically analyse a real-world AI ethics incident and propose a responsible framework.</p>
+          <ol class="q-list">
+            <li>Select a documented AI ethics incident (not one discussed in class). Write a 500-word case description covering: what happened, who was affected, and what the technical root cause was. <span class="marks">[1 mark]</span></li>
+            <li>Analyse the incident using TWO ethics frameworks: (a) Anthropic's HHH (Helpful, Harmless, Honest) and (b) the EU AI Act risk categories. Does the incident's system qualify as "high risk"? Why? <span class="marks">[1 mark]</span></li>
+            <li>Identify 3 specific technical changes to the system that could have prevented the incident. For each, explain the trade-off it introduces. <span class="marks">[1 mark]</span></li>
+            <li>Design a Responsible AI Checklist (min 12 items) for a developer building a healthcare AI assistant powered by Claude. Organise by category: Data, Model, Deployment, Monitoring. <span class="marks">[1 mark]</span></li>
+          </ol>
+          <p style="margin-top:12px; font-size:12.5px; color:var(--muted);">Submission: PDF report (max 8 pages) · Due: End of Week 8</p>
+        </div>
+      </div>
+
+      <!-- A5 -->
+      <div class="assign-card">
+        <div class="assign-header">
+          <h3>Assignment 5 — Capstone Proposal &amp; Architecture</h3>
+          <div><span class="badge badge-blue">Unit 5 · CO5</span> <span class="badge badge-red">4 Marks</span></div>
+        </div>
+        <div class="assign-body">
+          <p><strong>Objective:</strong> Plan an advanced AI application that will be demonstrated in L36 (Capstone Presentations).</p>
+          <ol class="q-list">
+            <li>Problem Statement: Identify a real-world problem solvable with Claude. Justify why an LLM is the right approach vs alternatives. Define measurable success criteria. <span class="marks">[1 mark]</span></li>
+            <li>Architecture Diagram: Draw a system architecture showing all components (user interface, Claude API, tools, databases, caching layer, deployment). Label data flows. <span class="marks">[1 mark]</span></li>
+            <li>Prompt Design: Write the complete system prompt and at least 2 example user prompts with expected outputs. Justify your prompting strategy. <span class="marks">[1 mark]</span></li>
+            <li>Ethics &amp; Risk Analysis: Identify 3 ethical risks of your application, rate their severity (Low/Med/High), and specify a mitigation for each. Include estimated API cost for 1,000 daily active users. <span class="marks">[1 mark]</span></li>
+          </ol>
+          <p style="margin-top:12px; font-size:12.5px; color:var(--muted);">Submission: PDF document + architecture diagram · Due: End of Week 10 · Groups of 2–3</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ QUIZZES ═══════════════ -->
+    <div class="page" id="page-quizzes">
+      <div class="section-h">Unit Quizzes</div>
+      <div class="section-sub">5 Quizzes · 10 Marks Total · 2 Marks Each · 15 Minutes · In-class</div>
+
+      <!-- Q1 -->
+      <div class="quiz-card">
+        <div class="quiz-header"><h3>Quiz 1 — Foundations of LLMs</h3><span class="badge badge-green">Unit 1 · 2 Marks · 15 min</span></div>
+        <div class="quiz-body">
+          <div class="mcq"><div class="q">1. In the self-attention mechanism, what does the scaling factor 1/√d<sub>k</sub> prevent?</div><ul class="options"><li>a) Gradient explosion during backpropagation</li><li class="correct">b) Vanishingly small gradients when dot products become large</li><li>c) Overfitting to training data</li><li>d) High memory usage during inference</li></ul></div>
+          <div class="mcq"><div class="q">2. Constitutional AI (CAI) differs from RLHF primarily because:</div><ul class="options"><li>a) CAI uses more human labellers</li><li>b) CAI does not use reinforcement learning at all</li><li class="correct">c) CAI uses AI-generated feedback based on a set of principles instead of human preference labels</li><li>d) CAI only works with smaller models</li></ul></div>
+          <div class="mcq"><div class="q">3. Which tokenisation method does Claude primarily use?</div><ul class="options"><li>a) Character-level tokenisation</li><li>b) Word-level tokenisation</li><li class="correct">c) Byte-Pair Encoding (BPE)</li><li>d) Unigram language model</li></ul></div>
+          <div class="mcq"><div class="q">4. A temperature of 0.0 in Claude's sampling results in:</div><ul class="options"><li class="correct">a) Deterministic / greedy output — always the most probable token</li><li>b) Random sampling from the full vocabulary</li><li>c) Top-p = 0 sampling</li><li>d) No output is generated</li></ul></div>
+          <div class="mcq"><div class="q">5. [Short Answer, 2–3 lines] What is the HHH framework and why is it important for Claude?</div><ul class="options"><li class="correct">Model Answer: HHH stands for Helpful, Harmless, Honest. It defines Claude's three core objectives: maximally helping users, avoiding harmful outputs, and being truthful. It is important because it operationalises Anthropic's mission of safe and beneficial AI into concrete training objectives.</li></ul></div>
+          <p style="font-size:11.5px;color:var(--muted);margin-top:10px;">★ Correct answers shown in green for instructor reference. Remove before distributing to students.</p>
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="quiz-card">
+        <div class="quiz-header"><h3>Quiz 2 — Prompt Engineering</h3><span class="badge badge-green">Unit 2 · 2 Marks · 15 min</span></div>
+        <div class="quiz-body">
+          <div class="mcq"><div class="q">1. "Let's think step by step" is associated with which prompting technique?</div><ul class="options"><li>a) Few-shot prompting</li><li class="correct">b) Zero-shot Chain-of-Thought</li><li>c) Self-consistency</li><li>d) ReAct prompting</li></ul></div>
+          <div class="mcq"><div class="q">2. Self-consistency prompting improves accuracy by:</div><ul class="options"><li>a) Using a larger model for each query</li><li class="correct">b) Sampling multiple diverse reasoning chains and taking the majority answer</li><li>c) Asking the model to critique its own output once</li><li>d) Adding more examples to the prompt</li></ul></div>
+          <div class="mcq"><div class="q">3. In ReAct prompting, "Action" refers to:</div><ul class="options"><li>a) The model's final answer</li><li>b) Human feedback on the model output</li><li class="correct">c) A tool call or external operation triggered by the model</li><li>d) Rewriting the original prompt</li></ul></div>
+          <div class="mcq"><div class="q">4. Which of the following is NOT a benefit of structured output prompting?</div><ul class="options"><li>a) Easier downstream parsing</li><li>b) Consistent response format</li><li>c) Better integration with APIs</li><li class="correct">d) Guaranteed reduction in hallucinations</li></ul></div>
+          <div class="mcq"><div class="q">5. [Short Answer] Explain the difference between a system prompt and a user prompt in Claude's conversation structure.</div><ul class="options"><li class="correct">Model Answer: A system prompt is set by the developer/operator before the conversation and defines Claude's persona, task, constraints, and context. A user prompt is the actual message sent by the end-user during the conversation. System prompts take precedence and frame how Claude should interpret all subsequent user messages.</li></ul></div>
+        </div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="quiz-card">
+        <div class="quiz-header"><h3>Quiz 3 — Claude API &amp; Applications</h3><span class="badge badge-green">Unit 3 · 2 Marks · 15 min</span></div>
+        <div class="quiz-body">
+          <div class="mcq"><div class="q">1. In RAG, what is the purpose of the vector database?</div><ul class="options"><li>a) Store the LLM weights</li><li class="correct">b) Store and retrieve document embeddings using similarity search</li><li>c) Cache API responses to reduce cost</li><li>d) Store conversation history</li></ul></div>
+          <div class="mcq"><div class="q">2. When Claude returns a <code>stop_reason: "tool_use"</code>, the developer should:</div><ul class="options"><li>a) Retry the API call with a higher temperature</li><li class="correct">b) Execute the requested tool and pass the result back in the next message</li><li>c) Increase the max_tokens parameter</li><li>d) Use a different model</li></ul></div>
+          <div class="mcq"><div class="q">3. Which encoding is required to pass an image to Claude's Vision API?</div><ul class="options"><li>a) UTF-8 text encoding</li><li>b) Hexadecimal encoding</li><li class="correct">c) Base64 encoding (or a publicly accessible URL)</li><li>d) Binary encoding</li></ul></div>
+          <div class="mcq"><div class="q">4. Prompt caching in the Claude API primarily reduces:</div><ul class="options"><li class="correct">a) Cost and latency for large repeated context prefixes</li><li>b) Hallucination rate</li><li>c) The need for system prompts</li><li>d) Model size at inference time</li></ul></div>
+          <div class="mcq"><div class="q">5. [Code MCQ] What is wrong with the following: <code>messages=[{"role":"user","content":"Hi"},{"role":"user","content":"Who are you?"}]</code></div><ul class="options"><li>a) Both messages have the wrong role</li><li class="correct">b) Claude API requires alternating user/assistant turns; two consecutive user messages are invalid</li><li>c) Content must be a list, not a string</li><li>d) There is no system message</li></ul></div>
+        </div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="quiz-card">
+        <div class="quiz-header"><h3>Quiz 4 — Responsible AI &amp; Ethics</h3><span class="badge badge-green">Unit 4 · 2 Marks · 15 min</span></div>
+        <div class="quiz-body">
+          <div class="mcq"><div class="q">1. "Extrinsic hallucination" in LLMs refers to:</div><ul class="options"><li>a) Internal contradictions within a single response</li><li class="correct">b) Generated content that cannot be verified from the source document (unfaithful to context)</li><li>c) Errors caused by low temperature sampling</li><li>d) Hallucinations that occur only in multilingual settings</li></ul></div>
+          <div class="mcq"><div class="q">2. The EU AI Act classifies AI systems used in employment screening as:</div><ul class="options"><li>a) Minimal risk</li><li>b) Limited risk</li><li class="correct">c) High risk</li><li>d) Unacceptable risk</li></ul></div>
+          <div class="mcq"><div class="q">3. Which technique is most effective at grounding Claude's responses to a specific document?</div><ul class="options"><li>a) Increasing temperature to 1.5</li><li>b) Using a system prompt with the word "accurate"</li><li class="correct">c) RAG — injecting retrieved document chunks into the context window</li><li>d) Using Claude-3-Opus instead of Haiku</li></ul></div>
+          <div class="mcq"><div class="q">4. Prompt injection attacks aim to:</div><ul class="options"><li>a) Overload the API with too many requests</li><li class="correct">b) Override or bypass the developer's system prompt by embedding adversarial instructions in user input</li><li>c) Steal API keys from the response</li><li>d) Reduce the model's context window</li></ul></div>
+          <div class="mcq"><div class="q">5. [Short Answer] What is the WinoBias benchmark and what does it measure?</div><ul class="options"><li class="correct">Model Answer: WinoBias is a benchmark dataset designed to measure gender bias in co-reference resolution systems. It contains sentences where stereotypical and anti-stereotypical gender associations are tested. High performance disparity between the two conditions indicates the model exhibits gender bias.</li></ul></div>
+        </div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="quiz-card">
+        <div class="quiz-header"><h3>Quiz 5 — Advanced Topics</h3><span class="badge badge-green">Unit 5 · 2 Marks · 15 min</span></div>
+        <div class="quiz-body">
+          <div class="mcq"><div class="q">1. In the MCP (Model Context Protocol) architecture, the "MCP Server" is responsible for:</div><ul class="options"><li>a) Running the Claude model weights locally</li><li class="correct">b) Exposing tools, resources, and capabilities (e.g., file system, database) to the LLM host</li><li>c) Managing user authentication</li><li>d) Compressing API requests</li></ul></div>
+          <div class="mcq"><div class="q">2. In a multi-agent "orchestrator-worker" pattern, the orchestrator's primary role is:</div><ul class="options"><li>a) Executing all tool calls directly</li><li class="correct">b) Planning the task, delegating sub-tasks to worker agents, and aggregating results</li><li>c) Providing the UI layer</li><li>d) Monitoring API costs</li></ul></div>
+          <div class="mcq"><div class="q">3. Compared to fine-tuning, RAG is preferred when:</div><ul class="options"><li>a) The knowledge domain is very narrow and static</li><li class="correct">b) The knowledge base changes frequently and needs real-time updates</li><li>c) Latency is not a concern</li><li>d) Embedding models are not available</li></ul></div>
+          <div class="mcq"><div class="q">4. "Extended thinking" mode in Claude is designed to improve performance on:</div><ul class="options"><li>a) Short creative writing tasks</li><li>b) Image generation</li><li class="correct">c) Complex multi-step reasoning and mathematics problems</li><li>d) Real-time streaming applications</li></ul></div>
+          <div class="mcq"><div class="q">5. [Short Answer] Name THREE strategies to reduce Claude API costs in a production application.</div><ul class="options"><li class="correct">Model Answer: (1) Prompt caching — reuse large system prompt prefixes; (2) Model selection — use claude-3-haiku for simple tasks and reserve Sonnet/Opus for complex ones; (3) Output limiting — set max_tokens appropriately to avoid unnecessarily long responses. Bonus: batch API for async workloads, context compression/summarisation.</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PROJECT ═══════════════ -->
+    <div class="page" id="page-project">
+      <div class="section-h">Capstone Project</div>
+      <div class="section-sub">Groups of 2–3 · Bonus 10 Marks · Maps to CO3, CO5</div>
+
+      <div class="card">
+        <h2>Project Guidelines</h2>
+        <p>The capstone project requires students to design and build a complete AI application using Claude that solves a real-world problem. The project integrates skills from all five units.</p>
+        <h3 style="margin-top:16px; margin-bottom:8px;">Deliverables</h3>
+        <table>
+          <thead><tr><th>Deliverable</th><th>Due</th><th>Marks</th></tr></thead>
+          <tbody>
+            <tr><td>Assignment 5: Project Proposal</td><td>Week 10</td><td>4 (graded separately)</td></tr>
+            <tr><td>GitHub Repository with working code</td><td>Week 13</td><td>4</td></tr>
+            <tr><td>Live Demo + Presentation (10 min)</td><td>Week 14 (L36)</td><td>4</td></tr>
+            <tr><td>Project Report (max 10 pages)</td><td>Week 14</td><td>2</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin-top:16px; margin-bottom:8px;">Suggested Project Ideas</h3>
+        <table>
+          <thead><tr><th>Domain</th><th>Project Idea</th><th>Key Claude Features</th></tr></thead>
+          <tbody>
+            <tr><td>Education</td><td>Personalised Doubt Solver for CS students</td><td>Multi-turn, RAG, tool use</td></tr>
+            <tr><td>Healthcare</td><td>Medical literature summariser with citations</td><td>Long context, RAG, structured output</td></tr>
+            <tr><td>Legal</td><td>Contract clause extractor and risk analyser</td><td>Vision API (PDF), structured JSON output</td></tr>
+            <tr><td>Productivity</td><td>AI meeting assistant with action items</td><td>Long context, structured output, multi-tool</td></tr>
+            <tr><td>Accessibility</td><td>Image description tool for visually impaired</td><td>Vision API, streaming, multilingual</td></tr>
+            <tr><td>Development</td><td>Multi-agent code review and test generator</td><td>Tool use, multi-agent, code execution</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ RESOURCES ═══════════════ -->
+    <div class="page" id="page-resources">
+      <div class="section-h">Books &amp; Learning Resources</div>
+      <div class="section-sub">Curated for CSAI601 students</div>
+      <div class="res-grid">
+        <div class="res-card">
+          <h3>📖 Official Documentation</h3>
+          <a href="https://docs.anthropic.com" target="_blank">Anthropic Official Docs — docs.anthropic.com</a>
+          <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview" target="_blank">Prompt Engineering Guide (Anthropic)</a>
+          <a href="https://docs.anthropic.com/en/api/getting-started" target="_blank">Claude API Reference</a>
+          <a href="https://github.com/anthropics/anthropic-sdk-python" target="_blank">Python SDK — GitHub</a>
+        </div>
+        <div class="res-card">
+          <h3>📚 Textbooks</h3>
+          <a href="#" target="_blank">Prompt Engineering for LLMs — Berryman &amp; Ziegler (O'Reilly 2024)</a>
+          <a href="https://www.oreilly.com/library/view/natural-language-processing/9781098136789/" target="_blank">NLP with Transformers — Tunstall et al.</a>
+          <a href="https://d2l.ai" target="_blank">Dive into Deep Learning — d2l.ai (free)</a>
+          <a href="https://www.packtpub.com/en-in/product/building-llm-powered-applications-9781835462317" target="_blank">Building LLM Apps — Valentina Alto (Packt)</a>
+        </div>
+        <div class="res-card">
+          <h3>🔬 Research Papers</h3>
+          <a href="https://arxiv.org/abs/1706.03762" target="_blank">Attention is All You Need (Vaswani et al., 2017)</a>
+          <a href="https://arxiv.org/abs/2212.08073" target="_blank">Constitutional AI: Harmlessness from AI Feedback</a>
+          <a href="https://arxiv.org/abs/2201.11903" target="_blank">Chain-of-Thought Prompting (Wei et al., 2022)</a>
+          <a href="https://arxiv.org/abs/2210.11610" target="_blank">ReAct: Synergizing Reasoning and Acting in LLMs</a>
+          <a href="https://arxiv.org/abs/2203.11171" target="_blank">Self-Consistency Prompting (Wang et al.)</a>
+        </div>
+        <div class="res-card">
+          <h3>🎥 Video Lectures</h3>
+          <a href="https://www.youtube.com/watch?v=wjZofJX0v4M" target="_blank">Attention Mechanism Illustrated — 3Blue1Brown</a>
+          <a href="https://www.deeplearning.ai/short-courses/prompt-engineering-for-developers/" target="_blank">ChatGPT Prompt Engineering for Devs (DeepLearning.AI)</a>
+          <a href="https://www.deeplearning.ai/short-courses/building-systems-with-chatgpt/" target="_blank">Building Systems with the ChatGPT API</a>
+          <a href="https://www.youtube.com/playlist?list=PLoROMvodv4rOSH4v6133s9LFPRHjEmbmJ" target="_blank">Stanford CS224N: NLP with Deep Learning</a>
+        </div>
+        <div class="res-card">
+          <h3>🛠️ Tools &amp; Platforms</h3>
+          <a href="https://console.anthropic.com" target="_blank">Anthropic Console (Playground)</a>
+          <a href="https://www.trychroma.com" target="_blank">ChromaDB — Vector Database</a>
+          <a href="https://python.langchain.com" target="_blank">LangChain Documentation</a>
+          <a href="https://streamlit.io" target="_blank">Streamlit — App Framework</a>
+          <a href="https://huggingface.co/models" target="_blank">HuggingFace — Embeddings &amp; Models</a>
+        </div>
+        <div class="res-card">
+          <h3>⚖️ Ethics &amp; Policy</h3>
+          <a href="https://www.anthropic.com/usage-policy" target="_blank">Anthropic Acceptable Use Policy</a>
+          <a href="https://artificialintelligenceact.eu" target="_blank">EU AI Act — Full Text</a>
+          <a href="https://unesdoc.unesco.org/ark:/48223/pf0000381137" target="_blank">UNESCO AI Ethics Recommendation</a>
+          <a href="https://www.nist.gov/artificial-intelligence/ai-risk-management-framework" target="_blank">NIST AI Risk Management Framework</a>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  const links = document.querySelectorAll('#sidebar nav a[data-page]');
+  const pages = document.querySelectorAll('.page');
+  const topbarTitle = document.getElementById('topbar-title');
+
+  const titles = {
+    home: 'Home',
+    syllabus: 'Syllabus & CO-PO Mapping',
+    unit1: 'Unit 1 — LLM Foundations',
+    unit2: 'Unit 2 — Prompt Engineering',
+    unit3: 'Unit 3 — Claude API & Apps',
+    unit4: 'Unit 4 — Responsible AI',
+    unit5: 'Unit 5 — Advanced Topics',
+    assignments: 'Assignments',
+    quizzes: 'Quizzes',
+    project: 'Capstone Project',
+    resources: 'Books & Resources'
+  };
+
+  links.forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = link.dataset.page;
+      links.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      pages.forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + target).classList.add('active');
+      topbarTitle.textContent = titles[target] || target;
+      window.scrollTo(0, 0);
+    });
+  });
+</script>
+</body>
+</html>
